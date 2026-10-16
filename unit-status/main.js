@@ -2,17 +2,14 @@ const F = window.MTFDFirebase;
 const app = F.initializeApp({apiKey:'AIzaSyDPYL6i6R_PcF8JPqsM6xocVxl2GWOqnTI',authDomain:'madison-twp-build.firebaseapp.com',projectId:'madison-twp-build',storageBucket:'madison-twp-build.firebasestorage.app',messagingSenderId:'386287384294',appId:'1:386287384294:web:4564cdf1069aac4a35ad27'});
 const db = F.getFirestore(app);
 const board = document.getElementById('units');
-let units = [], page = 0;
-function pageSize() { return window.innerWidth <= 500 ? 2 : window.innerWidth <= 1000 ? 4 : 8; }
+let units = [];
+
 function render() {
- const size = pageSize(), pages = Math.max(1, Math.ceil(units.length / size));
- page %= pages;
- document.getElementById('page').textContent = pages > 1 ? `${page + 1} / ${pages}` : '';
  board.replaceChildren();
  if (!units.length) {
   const message = document.createElement('p'); message.className = 'empty'; message.textContent = 'No unit status has been reported.'; board.append(message); return;
  }
- for (const unit of units.slice(page * size, (page + 1) * size)) {
+ for (const unit of units) {
   const card = document.createElement('article'); card.className = 'card ' + ({'In Service':'ready','Limited Service':'limited',OOS:'oos'}[unit.status] || '');
   const title = document.createElement('h2'); title.textContent = unit.unit;
   const status = document.createElement('div'); status.className = 'badge'; status.textContent = unit.status === 'OOS' ? 'Out of service' : unit.status || 'Not reported';
@@ -30,6 +27,8 @@ F.onSnapshot(F.collection(db, 'unitStatus'), {includeMetadataChanges:true}, snap
  document.getElementById('connection').textContent = 'Connection unavailable';
  if (!units.length) { const message = document.createElement('p'); message.className = 'empty'; message.textContent = 'Unit status is temporarily unavailable.'; board.replaceChildren(message); }
 });
-setInterval(() => { if(units.length > pageSize()) { page++; render(); } }, 10000);
 window.addEventListener('resize', render);
 window.addEventListener('offline', () => { document.getElementById('connection').textContent = 'Offline · last received data'; });
+
+
+
