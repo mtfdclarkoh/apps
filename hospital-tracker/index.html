@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediTrack — Regional Hospital Status</title>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Standalone, display-only kiosk. No local stylesheet or script dependencies. -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+        :root { color-scheme: light; font-family: 'DM Sans', sans-serif; color: #19333f; background: #f0f5f7; }
+        * { box-sizing: border-box; }
+        body { margin: 0; -webkit-font-smoothing: antialiased; }
+        h1,h2,p { margin: 0; }
+        svg { width: 20px; height: 20px; flex-shrink: 0; }
+        .kiosk { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+        .kiosk-header { flex-shrink: 0; background: #102d36; color: white; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 28px; }
+        .brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+        .brand-mark { width: 48px; height: 48px; background: #24aba6; display: grid; place-items: center; border-radius: 13px; flex-shrink: 0; }
+        .brand-mark svg { width: 32px; height: 32px; }
+        .eyebrow { font-size: 11px; letter-spacing: .17em; text-transform: uppercase; color: #9cbac2; margin-bottom: 5px; }
+        h1 { font-family: 'Manrope', sans-serif; font-size: clamp(22px, 2vw, 32px); font-weight: 800; letter-spacing: -.7px; }
+        .header-right { display: flex; align-items: center; gap: 28px; flex-shrink: 0; }
+        .totals { display: flex; gap: 24px; padding-right: 28px; border-right: 1px solid #37515a; }
+        .total { display: flex; flex-direction: column; gap: 4px; }
+        .total span { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #a7bec5; }
+        .total strong { font-size: 28px; line-height: 1; font-family: 'Manrope', sans-serif; }
+        .total.normal strong { color: #79d7b9; }
+        .total.diversion strong { color: #ff9ca9; }
+        .connection { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #b3ccc7; }
+        .dot { width: 7px; height: 7px; background: #58c6a3; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+        .pending .dot { background: #e1be71; }
+        .offline .dot { background: #f28b99; }
+        .kiosk-main { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 20px 24px 24px; gap: 15px; }
+        .network-heading { display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-shrink: 0; }
+        .network-heading h2 { font-family: 'Manrope', sans-serif; font-size: 16px; font-weight: 800; }
+        .network-heading span { font-size: 12px; color: #71858f; }
+        .hospital-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(var(--rows), minmax(0, 1fr)); gap: 16px; }
+        .hospital-card { background: white; border: 1px solid #dce6e9; border-top: 4px solid #58a992; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; min-height: 0; box-shadow: 0 2px 3px #19333f04; }
+        .hospital-card.diversion { border-color: #ecced4; border-top-color: #c94b60; }
+        .hospital-card.unknown { border-top-color: #9aaab3; }
+        .card-heading { padding: 16px 18px 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; flex-shrink: 0; }
+        .hospital-card h2 { font-family: 'Manrope', sans-serif; font-weight: 800; font-size: clamp(16px, calc(29px - var(--rows) * 2px), 24px); line-height: 1.3; letter-spacing: -.5px; overflow-wrap: anywhere; }
+        .badge { display: inline-flex; align-items: center; gap: 6px; background: #edf8f3; color: #19755f; border: 1px solid #d6ecdf; padding: 4px 8px; border-radius: 5px; font-size: 13px; font-weight: 700; }
+        .badge svg { width: 14px; height: 14px; }
+        .diversion .badge { color: #b2354a; background: #fff0f2; border-color: #f0d4db; }
+        .unknown .badge { color: #637480; background: #eff3f5; border-color: #dce5e9; }
+        .card-body { flex: 1; min-height: 0; padding: 0 18px 14px; overflow: hidden; display: flex; flex-direction: column; }
+        .reason { background: #fdf2f4; padding: 12px 14px; border-radius: 6px; color: #9d374b; line-height: 1.45; font-size: clamp(15px, calc(25px - var(--rows) * 2px), 21px); font-weight: 600; overflow: hidden; overflow-wrap: anywhere; white-space: pre-wrap; }
+        .reason-label { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: #a96977; margin-bottom: 5px; }
+        .normal-message { margin: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #6b9187; font-size: 15px; text-align: center; }
+        .normal-message svg { width: 30px; height: 30px; color: #6ea99a; }
+        .unknown .normal-message, .unknown .normal-message svg { color: #80959f; }
+        .comments { margin-top: 8px; color: #72858e; font-size: 13px; overflow-wrap: anywhere; }
+        .card-footer { padding: 9px 18px; background: #fafcfc; border-top: 1px solid #edf1f3; color: #72858e; display: flex; align-items: center; gap: 6px; font-size: 11px; flex-shrink: 0; }
+        .card-footer svg { width: 12px; height: 12px; }
+        .card-footer time { margin-left: auto; font-variant-numeric: tabular-nums; }
+        .activity-strip { display: flex; align-items: center; gap: 22px; background: #183b45; color: #d0dce0; padding: 13px 24px; border-top: 3px solid #289c98; flex-shrink: 0; font-size: 13px; }
+        .activity-label { display: flex; align-items: center; gap: 9px; color: #83c8c2; font-size: 11px; letter-spacing: .12em; font-weight: 700; white-space: nowrap; }
+        .activity-items { display: flex; align-items: center; gap: 25px; overflow: hidden; white-space: nowrap; }
+        .activity-item { display: flex; align-items: center; gap: 9px; }
+        .activity-item time { color: #8aa7b1; font-size: 11px; }
+        .activity-status { color: #7dd4b7; }
+        .activity-status.diversion { color: #ffa2b0; }
+        .activity-status.unknown { color: #b4c4ce; }
+        .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #718993; text-align: center; }
+        .empty-state svg { width: 46px; height: 46px; color: #498c92; }
+        .empty-state h2 { font-family: 'Manrope', sans-serif; font-size: 26px; color: #355965; }
+        .empty-state p { font-size: 17px; }
+        .dense .card-heading { padding: 10px 14px 8px; gap: 6px; }
+        .dense .card-body { padding: 0 14px 8px; }
+        .dense .reason { padding: 7px 10px; }
+        .dense .normal-message { flex-direction: row; gap: 7px; font-size: 14px; }
+        .dense .normal-message svg { width: 20px; height: 20px; }
+        .dense .card-footer { padding: 7px 14px; }
+        @media (max-width: 1000px) {
+            .kiosk-header { padding: 16px 20px; gap: 18px; }
+            .header-right { gap: 15px; }
+            .totals { gap: 15px; padding-right: 15px; }
+            .connection { font-size: 11px; }
+            .brand-mark { display: none; }
+            .hospital-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 650px) {
+            .kiosk-header { flex-wrap: wrap; }
+            .header-right { width: 100%; justify-content: space-between; }
+            .totals { flex: 1; border: 0; justify-content: space-between; }
+            .total strong { font-size: 21px; }
+            .connection { max-width: 100px; }
+            .kiosk-main { padding: 14px 12px; }
+            .hospital-grid { gap: 9px; }
+            .card-heading { padding: 10px; }
+            .hospital-card h2 { font-size: 16px; }
+            .card-body { padding: 0 10px 10px; }
+            .card-footer { padding: 8px; flex-wrap: wrap; }
+            .card-footer time { margin-left: 0; }
+            .activity-strip { padding: 12px; gap: 12px; }
+        }
+    </style>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
+        const state = {
+            hospitals: [],
+            logs: [],
+            loading: true,
+            error: null
+        };
+
+        // --- Shared Configuration ---
+        import { firebaseConfig, appId } from './firebase-config.js'; 
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- Auth & Init ---
+        async function init() {
+            try {
+                await signInAnonymously(auth);
+            } catch (error) {
+                console.error("Auth Error:", error);
+                state.loading = false;
+                state.error = "Connection Failed";
+                render();
+            }
+        }
+        init();
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) setupListeners();
+        });
+
+        function setupListeners() {
+            // 1. Hospitals (Public Data)
+            const hospitalsRef = collection(db, 'artifacts', appId, 'public', 'data', 'hospitals');
+            onSnapshot(hospitalsRef, (snapshot) => {
+                state.hospitals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Sort: Diversion first, then Name
+                state.hospitals.sort((a, b) => {
+                    if (a.status === 'Diversion' && b.status !== 'Diversion') return -1;
+                    if (a.status !== 'Diversion' && b.status === 'Diversion') return 1;
+                    return a.name.localeCompare(b.name);
+                });
+                state.error = null;
+                state.loading = false;
+                render();
+            }, (error) => {
+                console.error(error);
+                state.loading = false;
+                state.error = "Data Sync Error";
+                render();
+            });
+
+            // 2. Recent Activity Log
+            const logsRef = collection(db, 'artifacts', appId, 'public', 'data', 'hospital_logs');
+            const qLogs = query(logsRef, orderBy('timestamp', 'desc'), limit(5));
+            onSnapshot(qLogs, (snapshot) => {
+                state.logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                render();
+            });
+        }
+
+        // --- Helper Functions ---
+        function formatTime(timestamp) {
+            if (!timestamp) return '--:--';
+            const date = new Date(timestamp.seconds * 1000);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) + ' ' + date.toLocaleDateString();
+        }
+
+        function escape(value = '') {
+            return String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+        }
+
+        function icon(name) {
+            return `<i data-lucide="${name}" aria-hidden="true"></i>`;
+        }
+
+        function statusType(status) {
+            return status === 'Normal' ? 'normal' : status === 'Diversion' ? 'diversion' : 'unknown';
+        }
+
+        function renderHospital(h) {
+            const type = statusType(h.status);
+            const statusIcon = type === 'normal' ? 'circle-check' : type === 'diversion' ? 'triangle-alert' : 'circle-help';
+            return `<article class="hospital-card ${type}">
+                <div class="card-heading"><span class="badge">${icon(statusIcon)}${escape(h.status || 'Unknown')}</span><h2>${escape(h.name)}</h2></div>
+                <div class="card-body">${type === 'diversion' ? `<div class="reason"><span class="reason-label">Diversion reason</span>${escape(h.reason || 'No specific reason provided.')}</div>` : `<div class="normal-message">${icon(type === 'normal' ? 'activity' : 'circle-help')}<span>${type === 'normal' ? 'Operating normally' : 'Status not confirmed'}</span></div>`}${h.comments ? `<p class="comments">${escape(h.comments)}</p>` : ''}</div>
+                <div class="card-footer">${icon('clock-3')}Updated<time>${formatTime(h.lastUpdated)}</time></div>
+            </article>`;
+        }
+
+        function render() {
+            const connection = state.error ? 'offline' : state.loading ? 'pending' : 'live';
+            const unavailable = state.loading || Boolean(state.error);
+            const rows = Math.max(2, Math.ceil(state.hospitals.length / (window.innerWidth <= 1000 ? 2 : 4)));
+            const normal = state.hospitals.filter(h => h.status === 'Normal').length;
+            const diversion = state.hospitals.filter(h => h.status === 'Diversion').length;
+            document.getElementById('root').innerHTML = `
+                <div class="kiosk ${rows >= 4 ? 'dense' : ''}" style="--rows:${rows}">
+                    <header class="kiosk-header">
+                        <div class="brand"><span class="brand-mark">${icon('activity')}</span><div><p class="eyebrow">MediTrack · Regional operations</p><h1>Regional Hospital Status Board</h1></div></div>
+                        <div class="header-right"><section class="totals" aria-label="Hospital status totals"><div class="total"><span>Tracked</span><strong>${unavailable ? '—' : state.hospitals.length}</strong></div><div class="total normal"><span>Normal</span><strong>${unavailable ? '—' : normal}</strong></div><div class="total diversion"><span>Diversion</span><strong>${unavailable ? '—' : diversion}</strong></div></section><span class="connection ${connection}"><i class="dot"></i>${state.error ? 'Connection interrupted' : state.loading ? 'Connecting to live data' : 'Live updates'}</span></div>
+                    </header>
+                    <main class="kiosk-main">
+                        <div class="network-heading"><h2>Hospital network</h2><span>Diversions shown first · Updates automatically</span></div>
+                        ${unavailable || !state.hospitals.length ? `<div class="empty-state" role="status">${icon(state.error ? 'wifi-off' : state.loading ? 'radio-tower' : 'building-2')}<h2>${state.error ? 'Hospital status unavailable' : state.loading ? 'Connecting to your network' : 'Waiting for hospital updates'}</h2><p>${state.error ? 'Connection interrupted. Current hospital status cannot be confirmed.' : 'The board will update automatically when data arrives.'}</p></div>` : `<section class="hospital-grid" aria-label="Hospital statuses">${state.hospitals.map(renderHospital).join('')}</section>`}
+                    </main>
+                    <footer class="activity-strip"><span class="activity-label">${icon('radio')}Recent updates</span><div class="activity-items">${state.logs.length ? state.logs.map(l => `<span class="activity-item"><time>${formatTime(l.timestamp)}</time><strong>${escape(l.hospitalName)}</strong><span aria-hidden="true">→</span><strong class="activity-status ${statusType(l.newStatus)}">${escape(l.newStatus)}</strong></span>`).join('') : 'No recent status changes recorded.'}</div></footer>
+                </div>`;
+            window.lucide?.createIcons();
+        }
+
+        window.addEventListener('resize', render);
+        render();
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>
+

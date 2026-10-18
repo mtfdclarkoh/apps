@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101923">
+  <title>Daily Tasks</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="assets/firebase-client.js"></script><script defer src="main.js"></script>
+</head>
+<body>
+  <main>
+    <header><div><p class="eyebrow">Today's assignments</p><h1>Daily Tasks</h1></div><div class="indicators"><time id="date"></time><span id="connection" role="status">Connecting…</span></div></header>
+    <section id="tasks" aria-label="Today's scheduled tasks"><p class="empty">Loading daily tasks…</p></section>
+    <footer><span id="count"></span><span id="pagination"></span></footer>
+  </main>
+</body>
+</html>
