@@ -4,18 +4,28 @@ const db = F.getFirestore(app);
 const board = document.getElementById('units');
 let units = [];
 
+function statusAppearance(value) {
+ const raw = typeof value === 'string' ? value.trim() : '';
+ const key = raw.toLowerCase().replace(/[\s_-]+/g, '');
+ if (key === 'inservice') return { className: 'ready', label: 'In Service' };
+ if (key === 'limitedservice') return { className: 'limited', label: 'Limited Service' };
+ if (key === 'oos' || key === 'outofservice') return { className: 'oos', label: 'Out of service' };
+ return { className: '', label: raw || 'Not reported' };
+}
+
 function render() {
  board.replaceChildren();
  if (!units.length) {
   const message = document.createElement('p'); message.className = 'empty'; message.textContent = 'No unit status has been reported.'; board.append(message); return;
  }
  for (const unit of units) {
-  const card = document.createElement('article'); card.className = 'card ' + ({'In Service':'ready','Limited Service':'limited',OOS:'oos'}[unit.status] || '');
+  const appearance = statusAppearance(unit.status);
+  const card = document.createElement('article'); card.className = 'card ' + appearance.className;
   const title = document.createElement('h2'); title.textContent = unit.unit;
-  const status = document.createElement('div'); status.className = 'badge'; status.textContent = unit.status === 'OOS' ? 'Out of service' : unit.status || 'Not reported';
+  const status = document.createElement('div'); status.className = 'badge'; status.textContent = appearance.label;
   const location = document.createElement('p'); location.className = 'location'; location.textContent = unit.location || 'Location not reported';
   const notes = document.createElement('p'); notes.className = 'notes'; notes.textContent = unit.comments || '';
-  const updated = document.createElement('small'); const date = unit.reported?.toDate?.(); updated.textContent = date ? 'Updated ' + date.toLocaleString() : 'Update time unavailable';
+  const updated = document.createElement('small'); const date = unit.reported?.toDate?.(); updated.textContent = date ? 'Updated ' + date.toLocaleString([], { hourCycle: 'h23' }) : 'Update time unavailable';
   card.append(title, status, location, notes, updated); board.append(card);
  }
 }
@@ -29,6 +39,7 @@ F.onSnapshot(F.collection(db, 'unitStatus'), {includeMetadataChanges:true}, snap
 });
 window.addEventListener('resize', render);
 window.addEventListener('offline', () => { document.getElementById('connection').textContent = 'Offline · last received data'; });
+
 
 
 
