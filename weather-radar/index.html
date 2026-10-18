@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Madison Township · Weather Radar</title>
+  <link rel="stylesheet" href="assets/leaflet.css">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="assets/leaflet.js"></script>
+  <script defer src="radar.js"></script>
+</head>
+<body>
+  <main>
+    <header>
+      <div><h1>WEATHER RADAR</h1></div>
+      <div class="time"><span>RADAR FRAME · EASTERN TIME</span><strong id="frame-time">—</strong><p id="status" role="status">Loading map and radar…</p></div>
+    </header>
+    <section class="map-wrap" aria-label="Weather radar map">
+      <div id="map"></div>
+      <div class="map-key"><i></i> Local communities <i class="county-key"></i> Clark County</div>
+      <div id="notice" role="alert" hidden></div>
+    </section>
+  </main>
+</body>
+</html>
