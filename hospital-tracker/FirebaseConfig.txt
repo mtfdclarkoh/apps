@@ -1,0 +1,9 @@
+const firebaseConfig = {
+  apiKey: "AIzaSyB3kA2iij3LeG-rnuJbVWqjFrEr28ItzkM",
+  authDomain: "hospital-tracker-a6216.firebaseapp.com",
+  projectId: "hospital-tracker-a6216",
+  storageBucket: "hospital-tracker-a6216.firebasestorage.app",
+  messagingSenderId: "785586826325",
+  appId: "1:785586826325:web:b0f4d1bfbec7d118f1f8dc",
+  measurementId: "G-3TQFM15PTX"
+};

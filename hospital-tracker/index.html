@@ -5,18 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MediTrack — Regional Hospital Status</title>
     
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=optional">
 
     <!-- Standalone, display-only kiosk. No local stylesheet or script dependencies. -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
         :root { color-scheme: light; font-family: 'DM Sans', sans-serif; color: #19333f; background: #f0f5f7; }
         * { box-sizing: border-box; }
         body { margin: 0; -webkit-font-smoothing: antialiased; }
         h1,h2,p { margin: 0; }
         svg { width: 20px; height: 20px; flex-shrink: 0; }
-        .kiosk { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+        @keyframes board-enter { from { opacity: 0; } to { opacity: 1; } }
+        .kiosk { animation: board-enter 240ms ease-out; height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
         .kiosk-header { flex-shrink: 0; background: #102d36; color: white; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 28px; }
         .brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
         .brand-mark { width: 48px; height: 48px; background: #24aba6; display: grid; place-items: center; border-radius: 13px; flex-shrink: 0; }
@@ -25,12 +26,12 @@
         h1 { font-family: 'Manrope', sans-serif; font-size: clamp(22px, 2vw, 32px); font-weight: 800; letter-spacing: -.7px; }
         .header-right { display: flex; align-items: center; gap: 28px; flex-shrink: 0; }
         .totals { display: flex; gap: 24px; padding-right: 28px; border-right: 1px solid #37515a; }
-        .total { display: flex; flex-direction: column; gap: 4px; }
+        .total { min-width: 70px; display: flex; flex-direction: column; gap: 4px; }
         .total span { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #a7bec5; }
         .total strong { font-size: 28px; line-height: 1; font-family: 'Manrope', sans-serif; }
         .total.normal strong { color: #79d7b9; }
         .total.diversion strong { color: #ff9ca9; }
-        .connection { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #b3ccc7; }
+        .connection { width: 145px; display: flex; align-items: center; gap: 7px; font-size: 12px; color: #b3ccc7; }
         .dot { width: 7px; height: 7px; background: #58c6a3; border-radius: 50%; display: inline-block; flex-shrink: 0; }
         .pending .dot { background: #e1be71; }
         .offline .dot { background: #f28b99; }
@@ -38,6 +39,8 @@
         .network-heading { display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-shrink: 0; }
         .network-heading h2 { font-family: 'Manrope', sans-serif; font-size: 16px; font-weight: 800; }
         .network-heading span { font-size: 12px; color: #71858f; }
+        .hospital-content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+        .hospital-content.entering { animation: board-enter 240ms ease-out; }
         .hospital-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(var(--rows), minmax(0, 1fr)); gap: 16px; }
         .hospital-card { background: white; border: 1px solid #dce6e9; border-top: 4px solid #58a992; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; min-height: 0; box-shadow: 0 2px 3px #19333f04; }
         .hospital-card.diversion { border-color: #ecced4; border-top-color: #c94b60; }
@@ -76,6 +79,9 @@
         .dense .normal-message { flex-direction: row; gap: 7px; font-size: 14px; }
         .dense .normal-message svg { width: 20px; height: 20px; }
         .dense .card-footer { padding: 7px 14px; }
+        @media (prefers-reduced-motion: reduce) {
+            .kiosk, .hospital-content.entering { animation: none; }
+        }
         @media (max-width: 1000px) {
             .kiosk-header { padding: 16px 20px; gap: 18px; }
             .header-right { gap: 15px; }
@@ -88,6 +94,7 @@
             .kiosk-header { flex-wrap: wrap; }
             .header-right { width: 100%; justify-content: space-between; }
             .totals { flex: 1; border: 0; justify-content: space-between; }
+            .total { min-width: 0; }
             .total strong { font-size: 21px; }
             .connection { max-width: 100px; }
             .kiosk-main { padding: 14px 12px; }
@@ -103,10 +110,6 @@
 
     <!-- Firebase SDKs -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
-
         const state = {
             hospitals: [],
             logs: [],
@@ -114,31 +117,35 @@
             error: null
         };
 
-        // --- Shared Configuration ---
-        import { firebaseConfig, appId } from './firebase-config.js'; 
-        
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // --- Auth & Init ---
+        // Paint the board before downloading and connecting the data SDKs.
         async function init() {
             try {
-                await signInAnonymously(auth);
+                const [appSdk, authSdk, storeSdk, config] = await Promise.all([
+                    import('https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js'),
+                    import('https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js'),
+                    import('https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js'),
+                    import('./firebase-config.js')
+                ]);
+                const app = appSdk.initializeApp(config.firebaseConfig);
+                const auth = authSdk.getAuth(app);
+                const db = storeSdk.getFirestore(app);
+                let listening = false;
+                authSdk.onAuthStateChanged(auth, (user) => {
+                    if (user && !listening) {
+                        listening = true;
+                        setupListeners(db, config.appId, storeSdk);
+                    }
+                });
+                await authSdk.signInAnonymously(auth);
             } catch (error) {
-                console.error("Auth Error:", error);
+                console.error('Connection Error:', error);
                 state.loading = false;
-                state.error = "Connection Failed";
-                render();
+                state.error = 'Connection Failed';
+                scheduleRender();
             }
         }
-        init();
 
-        onAuthStateChanged(auth, (user) => {
-            if (user) setupListeners();
-        });
-
-        function setupListeners() {
+        function setupListeners(db, appId, { collection, onSnapshot, query, orderBy, limit }) {
             // 1. Hospitals (Public Data)
             const hospitalsRef = collection(db, 'artifacts', appId, 'public', 'data', 'hospitals');
             onSnapshot(hospitalsRef, (snapshot) => {
@@ -151,12 +158,12 @@
                 });
                 state.error = null;
                 state.loading = false;
-                render();
+                scheduleRender();
             }, (error) => {
                 console.error(error);
                 state.loading = false;
                 state.error = "Data Sync Error";
-                render();
+                scheduleRender();
             });
 
             // 2. Recent Activity Log
@@ -164,7 +171,7 @@
             const qLogs = query(logsRef, orderBy('timestamp', 'desc'), limit(5));
             onSnapshot(qLogs, (snapshot) => {
                 state.logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                render();
+                scheduleRender();
             });
         }
 
@@ -172,15 +179,28 @@
         function formatTime(timestamp) {
             if (!timestamp) return '--:--';
             const date = new Date(timestamp.seconds * 1000);
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) + ' ' + date.toLocaleDateString();
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }) + ' ' + date.toLocaleDateString();
         }
 
         function escape(value = '') {
             return String(value ?? '').replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
         }
 
+        // Inline icons are ready at first paint and need no DOM replacement pass.
+        const iconPaths = {
+            'activity': '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+            'circle-check': '<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>',
+            'triangle-alert': '<path d="M10.3 3.9 1.8 18.1A2 2 0 0 0 3.5 21h17a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 4h.01"/>',
+            'circle-help': '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3m.1 4h.01"/>',
+            'clock-3': '<circle cx="12" cy="12" r="10"/><path d="M12 6v6h4"/>',
+            'wifi-off': '<path d="m2 2 20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5-2.5m4-.1a10 10 0 0 1 5 2.6M2 9a16 16 0 0 1 4-2m3.5-1.3A16 16 0 0 1 22 9M12 20h.01"/>',
+            'radio-tower': '<path d="m8 21 4-10 4 10M9 18h6M5 16a10 10 0 0 1 0-14m14 0a10 10 0 0 1 0 14M8 13a6 6 0 0 1 0-8m8 0a6 6 0 0 1 0 8"/><circle cx="12" cy="9" r="2"/>',
+            'building-2': '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01"/>',
+            'radio': '<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4m-8.4 0a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2m-14.2 0a10 10 0 0 1 0-14.2"/>'
+        };
+
         function icon(name) {
-            return `<i data-lucide="${name}" aria-hidden="true"></i>`;
+            return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${iconPaths[name] || ''}</svg>`;
         }
 
         function statusType(status) {
@@ -197,33 +217,76 @@
             </article>`;
         }
 
+        const root = document.getElementById('root');
+        let framePending = false;
+        let contentRevealed = false;
+        const previousMarkup = new WeakMap();
+
+        function scheduleRender() {
+            if (framePending) return;
+            framePending = true;
+            requestAnimationFrame(() => {
+                framePending = false;
+                render();
+            });
+        }
+
+        function updateMarkup(element, markup) {
+            if (previousMarkup.get(element) === markup) return;
+            element.innerHTML = markup;
+            previousMarkup.set(element, markup);
+        }
+
+        function updateText(id, text) {
+            const element = document.getElementById(id);
+            const value = String(text);
+            if (element.textContent !== value) element.textContent = value;
+        }
+
         function render() {
             const connection = state.error ? 'offline' : state.loading ? 'pending' : 'live';
             const unavailable = state.loading || Boolean(state.error);
             const rows = Math.max(2, Math.ceil(state.hospitals.length / (window.innerWidth <= 1000 ? 2 : 4)));
-            const normal = state.hospitals.filter(h => h.status === 'Normal').length;
-            const diversion = state.hospitals.filter(h => h.status === 'Diversion').length;
-            document.getElementById('root').innerHTML = `
-                <div class="kiosk ${rows >= 4 ? 'dense' : ''}" style="--rows:${rows}">
-                    <header class="kiosk-header">
-                        <div class="brand"><span class="brand-mark">${icon('activity')}</span><div><p class="eyebrow">MediTrack · Regional operations</p><h1>Regional Hospital Status Board</h1></div></div>
-                        <div class="header-right"><section class="totals" aria-label="Hospital status totals"><div class="total"><span>Tracked</span><strong>${unavailable ? '—' : state.hospitals.length}</strong></div><div class="total normal"><span>Normal</span><strong>${unavailable ? '—' : normal}</strong></div><div class="total diversion"><span>Diversion</span><strong>${unavailable ? '—' : diversion}</strong></div></section><span class="connection ${connection}"><i class="dot"></i>${state.error ? 'Connection interrupted' : state.loading ? 'Connecting to live data' : 'Live updates'}</span></div>
-                    </header>
-                    <main class="kiosk-main">
-                        <div class="network-heading"><h2>Hospital network</h2><span>Diversions shown first · Updates automatically</span></div>
-                        ${unavailable || !state.hospitals.length ? `<div class="empty-state" role="status">${icon(state.error ? 'wifi-off' : state.loading ? 'radio-tower' : 'building-2')}<h2>${state.error ? 'Hospital status unavailable' : state.loading ? 'Connecting to your network' : 'Waiting for hospital updates'}</h2><p>${state.error ? 'Connection interrupted. Current hospital status cannot be confirmed.' : 'The board will update automatically when data arrives.'}</p></div>` : `<section class="hospital-grid" aria-label="Hospital statuses">${state.hospitals.map(renderHospital).join('')}</section>`}
-                    </main>
-                    <footer class="activity-strip"><span class="activity-label">${icon('radio')}Recent updates</span><div class="activity-items">${state.logs.length ? state.logs.map(l => `<span class="activity-item"><time>${formatTime(l.timestamp)}</time><strong>${escape(l.hospitalName)}</strong><span aria-hidden="true">→</span><strong class="activity-status ${statusType(l.newStatus)}">${escape(l.newStatus)}</strong></span>`).join('') : 'No recent status changes recorded.'}</div></footer>
-                </div>`;
-            window.lucide?.createIcons();
+            if (!root.firstElementChild) {
+                root.innerHTML = `
+                    <div class="kiosk" style="--rows:2">
+                        <header class="kiosk-header">
+                            <div class="brand"><span class="brand-mark">${icon('activity')}</span><div><p class="eyebrow">MediTrack · Regional operations</p><h1>Regional Hospital Status Board</h1></div></div>
+                            <div class="header-right"><section class="totals" aria-label="Hospital status totals"><div class="total"><span>Tracked</span><strong id="tracked-total">—</strong></div><div class="total normal"><span>Normal</span><strong id="normal-total">—</strong></div><div class="total diversion"><span>Diversion</span><strong id="diversion-total">—</strong></div></section><span id="connection" class="connection pending"><i class="dot"></i><span id="connection-label">Connecting to live data</span></span></div>
+                        </header>
+                        <main class="kiosk-main">
+                            <div class="network-heading"><h2>Hospital network</h2><span>Diversions shown first · Updates automatically</span></div>
+                            <div id="hospital-content" class="hospital-content"></div>
+                        </main>
+                        <footer class="activity-strip"><span class="activity-label">${icon('radio')}Recent updates</span><div id="activity-items" class="activity-items">Loading recent updates…</div></footer>
+                    </div>`;
+            }
+            const board = root.firstElementChild;
+            board.style.setProperty('--rows', rows);
+            board.classList.toggle('dense', rows >= 4);
+            updateText('tracked-total', unavailable ? '—' : state.hospitals.length);
+            updateText('normal-total', unavailable ? '—' : state.hospitals.filter(h => h.status === 'Normal').length);
+            updateText('diversion-total', unavailable ? '—' : state.hospitals.filter(h => h.status === 'Diversion').length);
+            document.getElementById('connection').className = 'connection ' + connection;
+            updateText('connection-label', state.error ? 'Connection interrupted' : state.loading ? 'Connecting to live data' : 'Live updates');
+
+            const content = document.getElementById('hospital-content');
+            updateMarkup(content, `${unavailable || !state.hospitals.length ? `<div class="empty-state" role="status">${icon(state.error ? 'wifi-off' : state.loading ? 'radio-tower' : 'building-2')}<h2>${state.error ? 'Hospital status unavailable' : state.loading ? 'Connecting to your network' : 'Waiting for hospital updates'}</h2><p>${state.error ? 'Connection interrupted. Current hospital status cannot be confirmed.' : 'The board will update automatically when data arrives.'}</p></div>` : `<section class="hospital-grid" aria-label="Hospital statuses">${state.hospitals.map(renderHospital).join('')}</section>`}`);
+            if (!state.loading && !contentRevealed) {
+                contentRevealed = true;
+                content.classList.add('entering');
+            }
+            updateMarkup(document.getElementById('activity-items'), `${state.logs.length ? state.logs.map(l => `<span class="activity-item"><time>${formatTime(l.timestamp)}</time><strong>${escape(l.hospitalName)}</strong><span aria-hidden="true">→</span><strong class="activity-status ${statusType(l.newStatus)}">${escape(l.newStatus)}</strong></span>`).join('') : 'No recent status changes recorded.'}`);
         }
 
-        window.addEventListener('resize', render);
+        window.addEventListener('resize', scheduleRender);
         render();
+        init();
     </script>
 </head>
 <body>
     <div id="root"></div>
 </body>
 </html>
+
 
